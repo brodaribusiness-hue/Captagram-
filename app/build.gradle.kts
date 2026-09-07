@@ -20,9 +20,17 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
+
     buildFeatures {
         viewBinding = true
     }
+
+    ndkVersion = "28.2.13676358"
 }
 
 dependencies {

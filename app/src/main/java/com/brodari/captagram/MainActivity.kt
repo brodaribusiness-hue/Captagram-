@@ -2,6 +2,7 @@ package com.brodari.captagram
 
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
@@ -38,8 +39,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadVideo(uri: Uri) {
-        binding.emptyStateText.visibility = android.view.View.GONE
-        binding.selectVideoButton.visibility = android.view.View.GONE
+        binding.emptyStateText.visibility = View.GONE
+        binding.selectVideoButton.visibility = View.GONE
 
         val mediaItem = MediaItem.fromUri(uri)
 

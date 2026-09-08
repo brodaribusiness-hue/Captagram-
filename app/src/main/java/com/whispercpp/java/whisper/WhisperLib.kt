@@ -4,20 +4,17 @@ class WhisperLib {
 
     companion object {
         init {
-            System.loadLibrary("whisper")
+            System.loadLibrary("captagram_whisper")
         }
     }
 
-    external fun initContextFromInputStream(inputStream: java.io.InputStream): Long
-
-    external fun initContextFromAsset(
-        assetManager: android.content.res.AssetManager,
-        assetPath: String
+    external fun initContext(
+        modelPath: String
     ): Long
 
-    external fun initContext(modelPath: String): Long
-
-    external fun freeContext(contextPtr: Long)
+    external fun freeContext(
+        contextPtr: Long
+    )
 
     external fun fullTranscribe(
         contextPtr: Long,
@@ -25,7 +22,9 @@ class WhisperLib {
         audioData: FloatArray
     )
 
-    external fun getTextSegmentCount(contextPtr: Long): Int
+    external fun getTextSegmentCount(
+        contextPtr: Long
+    ): Int
 
     external fun getTextSegment(
         contextPtr: Long,
@@ -42,9 +41,34 @@ class WhisperLib {
         index: Int
     ): Long
 
+    external fun getTextTokenCount(
+        contextPtr: Long,
+        segmentIndex: Int
+    ): Int
+
+    external fun getTextToken(
+        contextPtr: Long,
+        segmentIndex: Int,
+        tokenIndex: Int
+    ): String
+
+    external fun getTextTokenT0(
+        contextPtr: Long,
+        segmentIndex: Int,
+        tokenIndex: Int
+    ): Long
+
+    external fun getTextTokenT1(
+        contextPtr: Long,
+        segmentIndex: Int,
+        tokenIndex: Int
+    ): Long
+
+    external fun getTextTokenProbability(
+        contextPtr: Long,
+        segmentIndex: Int,
+        tokenIndex: Int
+    ): Float
+
     external fun getSystemInfo(): String
-
-    external fun benchMemcpy(numThreads: Int): String
-
-    external fun benchGgmlMulMat(numThreads: Int): String
 }

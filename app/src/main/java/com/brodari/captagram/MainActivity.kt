@@ -46,13 +46,6 @@ class MainActivity : AppCompatActivity() {
             uri?.let { loadVideo(it) }
         }
 
-    private val modelPicker =
-        registerForActivityResult(
-            ActivityResultContracts.OpenDocument()
-        ) { uri: Uri? ->
-            uri?.let { saveWhisperModel(it) }
-        }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -66,22 +59,12 @@ class MainActivity : AppCompatActivity() {
             videoPicker.launch("video/*")
         }
 
-        binding.selectModelButton.setOnClickListener {
-            modelPicker.launch(
-                arrayOf(
-                    "application/octet-stream",
-                    "application/x-binary",
-                    "*/*"
-                )
-            )
-        }
-
-        binding.transcribeButton.setOnClickListener {
-            transcribeSelectedVideo()
+        binding.generateCaptionsButton.setOnClickListener {
+            generateCaptions()
         }
 
         initializePlayer()
-        updateTranscribeButton()
+        updateGenerateCaptionsButton()
     }
 
     private fun initializePlayer() {
@@ -110,37 +93,10 @@ class MainActivity : AppCompatActivity() {
             seekTo(0L)
         }
 
-        updateTranscribeButton()
+        updateGenerateCaptionsButton()
     }
 
-    private fun saveWhisperModel(uri: Uri) {
-        binding.statusText.text = "Saving Whisper model..."
-        binding.transcribeButton.isEnabled = false
-
-        transcriptionExecutor.execute {
-            try {
-                val modelFile = whisperModelManager.saveModel(uri)
-
-                if (!modelFile.exists() || modelFile.length() <= 0L) {
-                    throw IllegalStateException("Whisper model file is empty")
-                }
-
-                runOnUiThread {
-                    binding.statusText.text = "Whisper model ready"
-                    updateTranscribeButton()
-                }
-            } catch (error: Exception) {
-                runOnUiThread {
-                    binding.statusText.text =
-                        error.message ?: "Unable to save Whisper model"
-
-                    updateTranscribeButton()
-                }
-            }
-        }
-    }
-
-    private fun transcribeSelectedVideo() {
+    private fun generateCaptions() {
         val videoUri = selectedVideoUri
 
         if (videoUri == null) {
@@ -148,18 +104,34 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (!whisperModelManager.isModelAvailable()) {
-            binding.statusText.text = "Select a Whisper model first"
-            updateTranscribeButton()
-            return
-        }
-
-        binding.transcribeButton.isEnabled = false
-        binding.statusText.text = "Transcribing..."
+        binding.generateCaptionsButton.isEnabled = false
+        binding.statusText.text = "Preparing Whisper..."
         binding.captionText.text = ""
 
         transcriptionExecutor.execute {
             try {
+                val modelFile =
+                    whisperModelManager.ensureModelAvailable { downloadedBytes, totalBytes ->
+                        runOnUiThread {
+                            val statusText =
+                                if (totalBytes > 0L) {
+                                    val percent =
+                                        (downloadedBytes * 100L / totalBytes)
+                                            .coerceIn(0L, 100L)
+
+                                    "Downloading Whisper model... $percent%"
+                                } else {
+                                    "Downloading Whisper model..."
+                                }
+
+                            binding.statusText.text = statusText
+                        }
+                    }
+
+                runOnUiThread {
+                    binding.statusText.text = "Generating captions..."
+                }
+
                 val segments =
                     whisperManager.transcribeVideo(
                         videoUri = videoUri
@@ -172,20 +144,19 @@ class MainActivity : AppCompatActivity() {
                         if (segments.isEmpty()) {
                             "No speech detected"
                         } else {
-                            "Transcription complete"
+                            "Captions generated"
                         }
 
                     updateCaptionForCurrentPosition()
-                    updateTranscribeButton()
+                    updateGenerateCaptionsButton()
                 }
             } catch (error: Exception) {
                 runOnUiThread {
                     binding.statusText.text =
-                        error.message ?: "Transcription failed"
+                        error.message ?: "Caption generation failed"
 
                     binding.captionText.text = ""
-
-                    updateTranscribeButton()
+                    updateGenerateCaptionsButton()
                 }
             }
         }
@@ -225,12 +196,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateTranscribeButton() {
-        val videoReady = selectedVideoUri != null
-        val modelReady = whisperModelManager.isModelAvailable()
-
-        binding.transcribeButton.isEnabled =
-            videoReady && modelReady
+    private fun updateGenerateCaptionsButton() {
+        binding.generateCaptionsButton.isEnabled =
+            selectedVideoUri != null
     }
 
     override fun onStop() {

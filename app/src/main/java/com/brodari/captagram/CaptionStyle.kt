@@ -1,0 +1,30 @@
+package com.brodari.captagram
+
+data class CaptionStyle(
+    val id: String,
+    val name: String,
+    val fontFamily: String,
+    val fontSizeSp: Float,
+    val textColor: Int,
+    val backgroundColor: Int,
+    val gradientStartColor: Int,
+    val gradientEndColor: Int,
+    val outlineColor: Int,
+    val outlineWidthPx: Float,
+    val shadowColor: Int,
+    val shadowRadiusPx: Float,
+    val shadowDxPx: Float,
+    val shadowDyPx: Float,
+    val glowColor: Int,
+    val glowRadiusPx: Float,
+    val stickerColor: Int,
+    val stickerCornerRadiusPx: Float,
+    val threeDColor: Int,
+    val threeDOffsetPx: Float,
+    val positionX: Float,
+    val positionY: Float,
+    val letterSpacing: Float,
+    val allCaps: Boolean,
+    val wordHighlightEnabled: Boolean,
+    val wordHighlightColor: Int
+)

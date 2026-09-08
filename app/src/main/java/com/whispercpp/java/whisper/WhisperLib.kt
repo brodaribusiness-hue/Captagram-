@@ -4,7 +4,7 @@ class WhisperLib {
 
     companion object {
         init {
-            System.loadLibrary("captagram_whisper")
+            System.loadLibrary("whisper")
         }
     }
 

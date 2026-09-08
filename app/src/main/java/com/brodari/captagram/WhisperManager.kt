@@ -11,27 +11,17 @@ class WhisperManager(
 ) {
 
     private val processor = WhisperProcessor()
-
-    private val audioExtractor =
-        VideoAudioExtractor(context)
+    private val audioExtractor = VideoAudioExtractor(context)
 
     fun transcribe(
         audioData: FloatArray,
         numThreads: Int = 4
     ): List<WhisperSegment> {
 
-        val modelFile =
-            File(
-                context.filesDir,
-                "ggml-base.bin"
-            )
+        val modelFile = File(context.filesDir, "ggml-base.bin")
 
-        if (!modelFile.exists() ||
-            modelFile.length() <= 0L
-        ) {
-            throw IllegalStateException(
-                "Whisper model not found"
-            )
+        if (!modelFile.exists()) {
+            throw IllegalStateException("Whisper model not found")
         }
 
         return processor.transcribe(
@@ -46,8 +36,11 @@ class WhisperManager(
         numThreads: Int = 4
     ): List<WhisperSegment> {
 
-        val audioData =
-            audioExtractor.extract(videoUri)
+        val audioData = audioExtractor.extract(videoUri)
+
+        if (audioData.isEmpty()) {
+            throw IllegalStateException("Unable to extract audio from video")
+        }
 
         return transcribe(
             audioData = audioData,

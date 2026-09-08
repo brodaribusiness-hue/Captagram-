@@ -41,12 +41,16 @@ class MainActivity : AppCompatActivity() {
         }
 
     private val videoPicker =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        registerForActivityResult(
+            ActivityResultContracts.GetContent()
+        ) { uri: Uri? ->
             uri?.let { loadVideo(it) }
         }
 
     private val modelPicker =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        registerForActivityResult(
+            ActivityResultContracts.GetContent()
+        ) { uri: Uri? ->
             uri?.let { saveWhisperModel(it) }
         }
 
@@ -76,9 +80,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initializePlayer() {
-        player = ExoPlayer.Builder(this).build().also { exoPlayer ->
-            binding.playerView.player = exoPlayer
-        }
+        player = ExoPlayer.Builder(this)
+            .build()
+            .also { exoPlayer ->
+                binding.playerView.player = exoPlayer
+            }
 
         captionHandler.post(captionSyncRunnable)
     }
@@ -113,14 +119,16 @@ class MainActivity : AppCompatActivity() {
                 whisperModelManager.saveModel(uri)
 
                 runOnUiThread {
-                    binding.statusText.text = "Whisper model ready"
+                    binding.statusText.text =
+                        "Whisper model ready"
+
                     updateTranscribeButton()
                 }
-
             } catch (error: Exception) {
                 runOnUiThread {
                     binding.statusText.text =
-                        error.message ?: "Unable to save Whisper model"
+                        error.message
+                            ?: "Unable to save Whisper model"
 
                     updateTranscribeButton()
                 }
@@ -132,12 +140,14 @@ class MainActivity : AppCompatActivity() {
         val videoUri = selectedVideoUri
 
         if (videoUri == null) {
-            binding.statusText.text = "Select a video first"
+            binding.statusText.text =
+                "Select a video first"
             return
         }
 
         if (!whisperModelManager.isModelAvailable()) {
-            binding.statusText.text = "Select a Whisper model first"
+            binding.statusText.text =
+                "Select a Whisper model first"
             return
         }
 
@@ -165,11 +175,11 @@ class MainActivity : AppCompatActivity() {
                     updateCaptionForCurrentPosition()
                     updateTranscribeButton()
                 }
-
             } catch (error: Exception) {
                 runOnUiThread {
                     binding.statusText.text =
-                        error.message ?: "Transcription failed"
+                        error.message
+                            ?: "Transcription failed"
 
                     binding.captionText.text = ""
                     updateTranscribeButton()
@@ -179,42 +189,46 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateCaptionForCurrentPosition() {
-        val currentPosition =
+        val positionMs =
             player?.currentPosition ?: return
 
-        val currentWord =
-            findCurrentWord(currentPosition)
+        val segment =
+            findCurrentSegment(positionMs)
 
-        val newCaptionText =
-            currentWord?.text ?: ""
+        if (segment == null) {
+            if (currentCaptionText.isNotEmpty()) {
+                currentCaptionText = ""
+                binding.captionText.text = ""
+            }
+            return
+        }
 
-        if (newCaptionText != currentCaptionText) {
-            currentCaptionText = newCaptionText
-            binding.captionText.text = newCaptionText
+        val captionText =
+            segment.text.trim()
+
+        if (captionText != currentCaptionText) {
+            currentCaptionText = captionText
+            binding.captionText.text = captionText
+        }
+    }
+
+    private fun findCurrentSegment(
+        positionMs: Long
+    ): WhisperSegment? {
+        return transcriptionResult.firstOrNull { segment ->
+            positionMs >= segment.startTimeMs &&
+                positionMs < segment.endTimeMs
         }
     }
 
     private fun findCurrentWord(
+        segment: WhisperSegment,
         positionMs: Long
     ): WhisperWord? {
-
-        for (segment in transcriptionResult) {
-            if (
-                positionMs >= segment.startTimeMs &&
-                positionMs <= segment.endTimeMs
-            ) {
-                for (word in segment.words) {
-                    if (
-                        positionMs >= word.startTimeMs &&
-                        positionMs < word.endTimeMs
-                    ) {
-                        return word
-                    }
-                }
-            }
+        return segment.words.firstOrNull { word ->
+            positionMs >= word.startTimeMs &&
+                positionMs < word.endTimeMs
         }
-
-        return null
     }
 
     private fun updateTranscribeButton() {
@@ -229,7 +243,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        captionHandler.removeCallbacks(captionSyncRunnable)
+        captionHandler.removeCallbacks(
+            captionSyncRunnable
+        )
 
         binding.playerView.player = null
 

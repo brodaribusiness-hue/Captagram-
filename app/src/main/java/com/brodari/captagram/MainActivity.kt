@@ -2,12 +2,16 @@ package com.brodari.captagram
 
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import com.brodari.captagram.databinding.ActivityMainBinding
+import com.whispercpp.java.whisper.WhisperSegment
+import com.whispercpp.java.whisper.WhisperWord
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -19,9 +23,22 @@ class MainActivity : AppCompatActivity() {
 
     private var player: ExoPlayer? = null
     private var selectedVideoUri: Uri? = null
+    private var transcriptionResult: List<WhisperSegment> = emptyList()
+    private var currentCaptionText = ""
 
     private val transcriptionExecutor: ExecutorService =
         Executors.newSingleThreadExecutor()
+
+    private val captionHandler =
+        Handler(Looper.getMainLooper())
+
+    private val captionSyncRunnable =
+        object : Runnable {
+            override fun run() {
+                updateCaptionForCurrentPosition()
+                captionHandler.postDelayed(this, 50L)
+            }
+        }
 
     private val videoPicker =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -62,10 +79,14 @@ class MainActivity : AppCompatActivity() {
         player = ExoPlayer.Builder(this).build().also { exoPlayer ->
             binding.playerView.player = exoPlayer
         }
+
+        captionHandler.post(captionSyncRunnable)
     }
 
     private fun loadVideo(uri: Uri) {
         selectedVideoUri = uri
+        transcriptionResult = emptyList()
+        currentCaptionText = ""
 
         binding.emptyStateText.visibility = View.GONE
         binding.selectVideoButton.visibility = View.GONE
@@ -77,6 +98,7 @@ class MainActivity : AppCompatActivity() {
             setMediaItem(MediaItem.fromUri(uri))
             prepare()
             playWhenReady = false
+            seekTo(0L)
         }
 
         updateTranscribeButton()
@@ -130,15 +152,9 @@ class MainActivity : AppCompatActivity() {
                         videoUri = videoUri
                     )
 
-                val captionText =
-                    segments
-                        .flatMap { it.words }
-                        .joinToString(" ") { it.text }
-                        .trim()
+                transcriptionResult = segments
 
                 runOnUiThread {
-                    binding.captionText.text = captionText
-
                     binding.statusText.text =
                         if (segments.isEmpty()) {
                             "No speech detected"
@@ -146,6 +162,7 @@ class MainActivity : AppCompatActivity() {
                             "Transcription complete"
                         }
 
+                    updateCaptionForCurrentPosition()
                     updateTranscribeButton()
                 }
 
@@ -154,10 +171,50 @@ class MainActivity : AppCompatActivity() {
                     binding.statusText.text =
                         error.message ?: "Transcription failed"
 
+                    binding.captionText.text = ""
                     updateTranscribeButton()
                 }
             }
         }
+    }
+
+    private fun updateCaptionForCurrentPosition() {
+        val currentPosition =
+            player?.currentPosition ?: return
+
+        val currentWord =
+            findCurrentWord(currentPosition)
+
+        val newCaptionText =
+            currentWord?.text ?: ""
+
+        if (newCaptionText != currentCaptionText) {
+            currentCaptionText = newCaptionText
+            binding.captionText.text = newCaptionText
+        }
+    }
+
+    private fun findCurrentWord(
+        positionMs: Long
+    ): WhisperWord? {
+
+        for (segment in transcriptionResult) {
+            if (
+                positionMs >= segment.startTimeMs &&
+                positionMs <= segment.endTimeMs
+            ) {
+                for (word in segment.words) {
+                    if (
+                        positionMs >= word.startTimeMs &&
+                        positionMs < word.endTimeMs
+                    ) {
+                        return word
+                    }
+                }
+            }
+        }
+
+        return null
     }
 
     private fun updateTranscribeButton() {
@@ -172,6 +229,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        captionHandler.removeCallbacks(captionSyncRunnable)
+
         binding.playerView.player = null
 
         player?.release()

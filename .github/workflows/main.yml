@@ -1,6 +1,7 @@
 name: Captagram Build
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -23,10 +24,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Gradle
+      - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.13'
 
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.13
+
       - name: Build debug APK
-        run: gradle assembleDebug
+        run: ./gradlew assembleDebug

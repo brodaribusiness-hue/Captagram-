@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
 
     private val modelPicker =
         registerForActivityResult(
-            ActivityResultContracts.GetContent()
+            ActivityResultContracts.OpenDocument()
         ) { uri: Uri? ->
             uri?.let { saveWhisperModel(it) }
         }
@@ -67,7 +67,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.selectModelButton.setOnClickListener {
-            modelPicker.launch("*/*")
+            modelPicker.launch(
+                arrayOf(
+                    "application/octet-stream",
+                    "application/x-binary",
+                    "*/*"
+                )
+            )
         }
 
         binding.transcribeButton.setOnClickListener {
@@ -113,7 +119,11 @@ class MainActivity : AppCompatActivity() {
 
         transcriptionExecutor.execute {
             try {
-                whisperModelManager.saveModel(uri)
+                val modelFile = whisperModelManager.saveModel(uri)
+
+                if (!modelFile.exists() || modelFile.length() <= 0L) {
+                    throw IllegalStateException("Whisper model file is empty")
+                }
 
                 runOnUiThread {
                     binding.statusText.text = "Whisper model ready"
@@ -140,6 +150,7 @@ class MainActivity : AppCompatActivity() {
 
         if (!whisperModelManager.isModelAvailable()) {
             binding.statusText.text = "Select a Whisper model first"
+            updateTranscribeButton()
             return
         }
 
@@ -215,9 +226,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateTranscribeButton() {
+        val videoReady = selectedVideoUri != null
+        val modelReady = whisperModelManager.isModelAvailable()
+
         binding.transcribeButton.isEnabled =
-            selectedVideoUri != null &&
-                whisperModelManager.isModelAvailable()
+            videoReady && modelReady
     }
 
     override fun onStop() {
